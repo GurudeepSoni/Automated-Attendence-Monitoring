@@ -1,4 +1,4 @@
-<!doctype html><html lang="hi"><head><meta charset="utf-8">
+<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Smart Attendance</title>
 <style>
@@ -42,10 +42,10 @@ async function startCam(v){
   v.parentNode.insertBefore(box,v);
   const sel=box.querySelector('#camSel'),msg=box.querySelector('#camMsg');
   function explain(e){const n=e.name||'';
-    if(!navigator.mediaDevices) return "Browser camera support nahi hai. Chrome/Edge mein http://127.0.0.1:5000 se kholo.";
-    if(n==='NotAllowedError'||n==='SecurityError') return "Camera permission block hai.\nAddress bar ke camera icon pe Allow karo, phir refresh karo.";
-    if(n==='NotFoundError'||n==='OverconstrainedError') return "Koi camera nahi mila. USB camera lagao, phir Refresh dabao.";
-    if(n==='NotReadableError'||n==='AbortError') return "Camera kisi aur app mein chal raha hai (Zoom/Teams/Camera app). Use band karo, phir Refresh dabao.";
+    if(!navigator.mediaDevices) return "Your browser does not support camera access. Open the site in Chrome or Edge.";
+    if(n==='NotAllowedError'||n==='SecurityError') return "Camera permission is blocked.\nClick the camera icon in the address bar, choose Allow, then refresh the page.";
+    if(n==='NotFoundError'||n==='OverconstrainedError') return "No camera found. Connect a USB camera, then click Refresh.";
+    if(n==='NotReadableError'||n==='AbortError') return "The camera is being used by another app (Zoom, Teams, Camera app). Close it, then click Refresh.";
     return "Camera error: "+n+" "+(e.message||'');}
   async function listCams(cur){
     const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
@@ -59,13 +59,13 @@ async function startCam(v){
       catch(e1){if(id&&(e1.name==='OverconstrainedError'||e1.name==='NotFoundError'))_stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});else throw e1}
       v.srcObject=_stream;await v.play();
       await listCams(_stream.getVideoTracks()[0].getSettings().deviceId);
-      setTimeout(()=>{if(v.videoWidth===0)msg.textContent="Video nahi aa rahi. Dropdown se dusra camera chuno ya dusri app band karo."},2000);
+      setTimeout(()=>{if(v.videoWidth===0)msg.textContent="No video is coming through. Choose another camera from the dropdown or close other apps using the camera."},2000);
     }catch(e){msg.textContent=explain(e);try{await listCams()}catch(_){}}}
   sel.onchange=()=>open(sel.value);box.querySelector('#camRef').onclick=()=>open(sel.value||undefined);
   if(navigator.mediaDevices)navigator.mediaDevices.addEventListener('devicechange',async()=>{try{await listCams(sel.value)}catch(_){}if(!_stream||!_stream.active)open(sel.value||undefined)});
   await open();}
 function snap(v,silent){
-  if(!v.videoWidth){if(!silent)toast('Camera abhi ready nahi hai.','err');return null}
+  if(!v.videoWidth){if(!silent)toast('The camera is not ready yet.','err');return null}
   const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
   c.getContext('2d').drawImage(v,0,0);return c.toDataURL('image/jpeg',0.9)}
 </script></head><body>
