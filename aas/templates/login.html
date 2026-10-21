@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% block body %}
 <div class="card" style="max-width:380px;margin:60px auto">
-<h1>🔐 Login</h1><p class="sub">Teacher / Admin password daalo</p>
+<h1>🔐 Login</h1><p class="sub">Enter the teacher / admin password</p>
 <form method="post"><label>Password</label><input type="password" name="password" autofocus>
 <button class="btn" style="margin-top:16px;width:100%;justify-content:center">Login</button></form>
 {% if err %}<p style="color:var(--bad);font-weight:700">{{err}}</p>{% endif %}</div>
