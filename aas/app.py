@@ -13,14 +13,14 @@ _default_db = "/tmp/attendance.db" if os.environ.get("VERCEL") else os.path.join
 DB = os.environ.get("DB_PATH", _default_db)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-change-me")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
-TOLERANCE = 0.5  # kam = strict, zyada = lenient
+TOLERANCE = 0.5  # lower = stricter matching, higher = more lenient
 
 @app.before_request
 def need_login():
     if request.endpoint in ("login", "static") or session.get("auth"):
         return
     if request.path.startswith("/api/"):
-        return jsonify(ok=False, msg="Login karo."), 401
+        return jsonify(ok=False, msg="Please log in."), 401
     return redirect(url_for("login"))
 
 @app.route("/login", methods=["GET", "POST"])
@@ -30,7 +30,7 @@ def login():
         if request.form.get("password") == ADMIN_PASSWORD:
             session["auth"] = True
             return redirect(url_for("index"))
-        err = "Galat password."
+        err = "Incorrect password."
     return render_template("login.html", err=err)
 
 @app.route("/logout")
@@ -97,17 +97,17 @@ def api_register():
     encs = []
     for img in d["images"]:
         found = face_encodings(to_image(img))
-        if len(found) == 1:          # sirf wahi photo jisme ek hi chehra ho
+        if len(found) == 1:          # only use photos that contain exactly one face
             encs.append(found[0].tolist())
     if not encs:
-        return jsonify(ok=False, msg="Chehra detect nahi hua. Roshni mein, seedha camera ki taraf dekh ke dobara try karo.")
+        return jsonify(ok=False, msg="No face detected. Try again in good light, looking straight at the camera.")
     try:
         db().execute("INSERT INTO students(name,roll,class_name,encodings) VALUES(?,?,?,?)",
                      (d["name"], d["roll"], d["class_name"], json.dumps(encs)))
         db().commit()
     except sqlite3.IntegrityError:
-        return jsonify(ok=False, msg="Ye roll number pehle se registered hai.")
-    return jsonify(ok=True, msg=f"{d['name']} register ho gaya ({len(encs)} photos use hui).")
+        return jsonify(ok=False, msg="This roll number is already registered.")
+    return jsonify(ok=True, msg=f"{d['name']} has been registered ({len(encs)} photos used).")
 
 @app.route("/attendance")
 def attendance_page():
@@ -122,7 +122,7 @@ def api_mark():
         for e in json.loads(s["encodings"]):
             known.append(np.array(e)); owners.append(s)
     if not known:
-        return jsonify(ok=False, msg="Pehle students register karo.")
+        return jsonify(ok=False, msg="Please register students first.")
     encs = face_encodings(img)
     marked, already, unknown = [], [], 0
     for enc in encs:
@@ -158,7 +158,7 @@ def report_download():
     for r in report_rows(day):
         w.writerow([r["name"], r["roll"], r["class_name"], day,
                     "Present" if r["present"] else "Absent", r["time"]])
-    # utf-8-sig: Excel mein Hindi naam bhi sahi dikhte hain
+    # utf-8-sig: lets Excel display non-English names correctly
     data = "\ufeff" + out.getvalue()
     return Response(data, mimetype="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f"attachment; filename=attendance_{day}.csv"})
@@ -173,13 +173,13 @@ def report_xlsx():
         ws.append([r["name"], r["roll"], r["class_name"], day,
                    "Present" if r["present"] else "Absent", r["time"]])
     for col, w in zip("ABCDEF", (24, 12, 12, 14, 12, 16)):
-        ws.column_dimensions[col].width = w   # isse ###### nahi aayega
+        ws.column_dimensions[col].width = w   # prevents ###### in Excel
     buf = io.BytesIO(); wb.save(buf)
     return Response(buf.getvalue(),
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename=attendance_{day}.xlsx"})
 
-init_db()   # gunicorn ke liye bhi tables ban jayein
+init_db()   # create tables on startup (also needed when run by a server like Vercel)
 
 if __name__ == "__main__":
     app.run(debug=True)
