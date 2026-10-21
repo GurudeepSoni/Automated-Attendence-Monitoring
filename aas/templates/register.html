@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% block body %}
+<h1>Student Register</h1><p class="sub">Details bharo aur 3-5 alag angle ki photos lo</p>
+<div class="grid g2">
+ <div class="card">
+  <label>Naam</label><input id="name" placeholder="Student ka naam">
+  <label>Roll No</label><input id="roll" placeholder="Roll number">
+  <label>Class</label><input id="cls" placeholder="e.g. 8-A">
+  <label>Photos (<span id="n">0</span>/5)</label>
+  <div id="thumbs" style="display:flex;gap:8px;flex-wrap:wrap;min-height:60px"></div>
+  <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+   <button type="button" class="btn ok" id="saveBtn">💾 Save Student</button>
+   <button type="button" class="btn sec" id="clearBtn">Photos hatao</button></div>
+  <p id="msg" style="font-weight:700;margin-bottom:0"></p>
+ </div>
+ <div class="card"><video id="v" autoplay playsinline></video>
+  <button type="button" class="btn" id="capBtn" style="margin-top:12px;width:100%;justify-content:center">📸 Photo lo</button>
+  <div class="sub" style="margin:10px 0 0;font-size:13px">Tip: roshni mein, seedha dekho, ek hi insaan frame mein. Seedha, thoda left, thoda right.</div></div>
+</div>
+<script>
+const v=document.getElementById('v'),msgEl=document.getElementById('msg'),th=document.getElementById('thumbs');
+let imgs=[];startCam(v);
+function show(t,ok){msgEl.textContent=t;msgEl.style.color=ok?'var(--ok)':'var(--bad)'}
+function draw(){document.getElementById('n').textContent=imgs.length;th.innerHTML='';
+ imgs.forEach(function(s,i){var w=document.createElement('div');w.style.cssText='position:relative;animation:pop .25s';
+  w.innerHTML='<img src="'+s+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:2px solid var(--ok)"><span style="position:absolute;top:-6px;right:-6px;background:var(--bad);color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;font-size:13px;cursor:pointer;line-height:20px">×</span>';
+  w.querySelector('span').onclick=function(){imgs.splice(i,1);draw()};th.appendChild(w)})}
+document.getElementById('capBtn').onclick=function(){
+ if(imgs.length>=5){toast('Maximum 5 photos kaafi hain.','err');return}
+ var s=snap(v);if(!s)return;imgs.push(s);draw();toast('Photo '+imgs.length+' li gayi','ok')};
+document.getElementById('clearBtn').onclick=function(){imgs=[];draw()};
+document.getElementById('saveBtn').onclick=async function(){
+ var name=document.getElementById('name').value.trim(),roll=document.getElementById('roll').value.trim(),cls=document.getElementById('cls').value.trim();
+ if(!name||!roll||!cls){show('Naam, Roll No aur Class teeno bharo.',false);return}
+ if(!imgs.length){show('Kam se kam 1 photo lo.',false);return}
+ show('Save ho raha hai... wait karo',true);
+ try{var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,roll:roll,class_name:cls,images:imgs})});
+  if(!r.ok){show('Server error ('+r.status+'). Terminal dekho.',false);return}
+  var j=await r.json();show(j.msg,j.ok);toast(j.msg,j.ok?'ok':'err');
+  if(j.ok){imgs=[];draw();['name','roll','cls'].forEach(function(id){document.getElementById(id).value=''})}
+ }catch(e){show('Request fail: '+e.message,false)}};
+</script>{% endblock %}

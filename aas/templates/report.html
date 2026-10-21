@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% block body %}
+<h1>Attendance Report</h1><p class="sub">Date chuno, search/filter karo, aur CSV download karo</p>
+<div class="card" style="margin-bottom:16px">
+ <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+  <div><label style="margin-top:0">Date</label><input type="date" id="day" value="{{ day }}" style="width:auto"></div>
+  <div style="flex:1;min-width:160px"><label style="margin-top:0">Search</label><input id="q" placeholder="Naam ya roll..."></div>
+  <div><label style="margin-top:0">Class</label><select id="cl" style="width:auto"><option value="">Sab</option>{% for c in classes %}<option>{{c}}</option>{% endfor %}</select></div>
+  <a class="btn ok" href="/report/download.xlsx?day={{ day }}">⬇ Excel (.xlsx)</a>
+  <a class="btn sec" href="/report/download?day={{ day }}">⬇ CSV</a>
+ </div>
+ <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap" id="chips">
+  <button class="btn sec" data-f="all">Sab <b id="c_all"></b></button>
+  <button class="btn sec" data-f="p">Present <b id="c_p"></b></button>
+  <button class="btn sec" data-f="a">Absent <b id="c_a"></b></button></div>
+</div>
+<div class="card" style="padding:0;overflow-x:auto">
+<table style="width:100%;border-collapse:collapse" id="tbl">
+ <tr style="text-align:left;color:var(--muted);font-size:13px"><th style="padding:14px">Naam</th><th>Roll</th><th>Class</th><th>Status</th><th>Time</th></tr>
+ {% for r in rows %}
+ <tr class="row" data-s="{{ 'p' if r.present else 'a' }}" data-c="{{r.class_name}}" data-t="{{ (r.name ~ ' ' ~ r.roll)|lower }}" style="border-top:1px solid var(--line)">
+  <td style="padding:13px 14px;font-weight:600">{{r.name}}</td><td>{{r.roll}}</td><td>{{r.class_name}}</td>
+  <td>{% if r.present %}<span class="badge p">Present</span>{% else %}<span class="badge a">Absent</span>{% endif %}</td>
+  <td>{{ r.time or '-' }}</td></tr>
+ {% endfor %}
+</table>
+<div id="none" class="sub" style="padding:20px;display:none">Koi record nahi mila.</div></div>
+<script>
+var f='all',rows=[].slice.call(document.querySelectorAll('.row'));
+function apply(){var q=document.getElementById('q').value.toLowerCase(),c=document.getElementById('cl').value,n=0,cnt={all:0,p:0,a:0};
+ rows.forEach(function(r){var m=(!q||r.dataset.t.indexOf(q)>-1)&&(!c||r.dataset.c===c);
+  if(m){cnt.all++;cnt[r.dataset.s]++}
+  var show=m&&(f==='all'||r.dataset.s===f);r.style.display=show?'':'none';if(show)n++});
+ ['all','p','a'].forEach(function(k){document.getElementById('c_'+k).textContent=cnt[k]});
+ document.getElementById('none').style.display=n?'none':'block';
+ document.querySelectorAll('#chips .btn').forEach(function(b){b.style.borderColor=b.dataset.f===f?'var(--pri)':''})}
+document.getElementById('q').oninput=apply;document.getElementById('cl').onchange=apply;
+document.querySelectorAll('#chips .btn').forEach(function(b){b.onclick=function(){f=b.dataset.f;apply()}});
+document.getElementById('day').onchange=function(){location.href='/report?day='+this.value};
+apply();
+</script>{% endblock %}

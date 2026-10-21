@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block body %}
+<h1>Namaste 👋</h1><p class="sub">Aaj ka attendance ek nazar mein</p>
+<div class="grid g4">
+ <div class="card"><div class="sub" style="margin:0">Total Students</div><h1 class="cnt" data-n="{{total}}">0</h1></div>
+ <div class="card"><div class="sub" style="margin:0">Aaj Present</div><h1 class="cnt" style="color:var(--ok)" data-n="{{present}}">0</h1></div>
+ <div class="card"><div class="sub" style="margin:0">Aaj Absent</div><h1 class="cnt" style="color:var(--bad)" data-n="{{absent}}">0</h1></div>
+ <div class="card" style="display:flex;align-items:center;gap:14px">
+  <div style="width:70px;height:70px;border-radius:50%;background:conic-gradient(var(--pri) {{pct}}%,var(--line) 0);display:grid;place-items:center">
+   <div style="width:52px;height:52px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-weight:800">{{pct}}%</div></div>
+  <div class="sub" style="margin:0">Attendance<br>Rate</div></div>
+</div>
+<h3 style="margin:28px 0 12px">Quick Actions</h3>
+<div class="grid g4">
+ <a class="card" href="/register" style="text-decoration:none;color:inherit"><h2 style="margin:0">🧑‍🎓</h2><b>Student Register</b><div class="sub" style="margin:4px 0 0">Naya student + face photos</div></a>
+ <a class="card" href="/attendance" style="text-decoration:none;color:inherit"><h2 style="margin:0">✅</h2><b>Attendance Lagao</b><div class="sub" style="margin:4px 0 0">Camera se face scan</div></a>
+ <a class="card" href="/report" style="text-decoration:none;color:inherit"><h2 style="margin:0">📊</h2><b>Report</b><div class="sub" style="margin:4px 0 0">Dekho aur CSV download</div></a>
+</div>
+<script>
+document.querySelectorAll('.cnt').forEach(function(el){var n=+el.dataset.n,i=0,s=Math.max(1,Math.ceil(n/25));
+ var t=setInterval(function(){i=Math.min(n,i+s);el.textContent=i;if(i>=n)clearInterval(t)},25)});
+document.querySelectorAll('a.card').forEach(function(c){c.style.transition='.2s';
+ c.onmouseenter=function(){c.style.transform='translateY(-4px)'};c.onmouseleave=function(){c.style.transform=''}});
+</script>{% endblock %}

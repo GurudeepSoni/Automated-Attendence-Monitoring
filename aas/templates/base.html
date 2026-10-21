@@ -1,0 +1,81 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Attendance</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--text:#1c2434;--muted:#6b7488;--line:#e4e8f0;--pri:#4f46e5;--pri2:#7c3aed;--ok:#16a34a;--okbg:#dcfce7;--bad:#dc2626;--badbg:#fee2e2;--shadow:0 6px 24px rgba(30,41,90,.08)}
+[data-theme=dark]{--bg:#0f1420;--card:#171e2e;--text:#e8ecf5;--muted:#8d97ad;--line:#27314a;--okbg:#12361f;--badbg:#3b1717;--shadow:0 6px 24px rgba(0,0,0,.4)}
+*{box-sizing:border-box}body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);transition:background .3s}
+.top{position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:10px 20px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:18px;margin-right:auto;background:linear-gradient(90deg,var(--pri),var(--pri2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.top a{color:var(--muted);text-decoration:none;padding:8px 14px;border-radius:10px;font-weight:600;transition:.2s}
+.top a:hover{background:var(--bg);color:var(--text)}.top a.on{background:var(--pri);color:#fff}
+.wrap{max-width:1000px;margin:24px auto;padding:0 16px}
+h1{margin:0 0 4px;font-size:26px}.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+.grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(310px,1fr))}
+input,select{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:15px;outline:none;transition:.2s}
+input:focus,select:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin:12px 0 5px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;padding:11px 18px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--pri),var(--pri2));text-decoration:none;transition:.2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(79,70,229,.35)}.btn:active{transform:none}
+.btn.sec{background:var(--bg);color:var(--text);border:1.5px solid var(--line)}.btn.sec:hover{box-shadow:none;border-color:var(--pri)}
+.btn.ok{background:linear-gradient(90deg,#16a34a,#22c55e)}.btn.bad{background:linear-gradient(90deg,#dc2626,#ef4444)}
+.badge{padding:4px 11px;border-radius:99px;font-size:13px;font-weight:700}.badge.p{background:var(--okbg);color:var(--ok)}.badge.a{background:var(--badbg);color:var(--bad)}
+video{width:100%;border-radius:14px;background:#000;min-height:220px;display:block}
+.camtools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.camtools select{flex:1;min-width:150px;width:auto}
+.camstatus{width:100%;color:var(--bad);font-size:13px;white-space:pre-line}
+#toasts{position:fixed;right:16px;bottom:16px;display:grid;gap:8px;z-index:99}
+.toast{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--pri);padding:12px 16px;border-radius:10px;box-shadow:var(--shadow);animation:slide .3s;max-width:320px;font-weight:600}
+.toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--bad)}
+@keyframes slide{from{transform:translateX(40px);opacity:0}}
+@keyframes pop{from{transform:scale(.8);opacity:0}}
+</style>
+<script>
+(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}})();
+function toggleTheme(){var d=document.documentElement,n=d.dataset.theme==='dark'?'light':'dark';d.dataset.theme=n;try{localStorage.setItem('theme',n)}catch(e){}}
+function toast(m,t){var b=document.getElementById('toasts'),e=document.createElement('div');e.className='toast '+(t||'');e.textContent=m;b.appendChild(e);setTimeout(function(){e.remove()},4000)}
+let _stream=null;
+async function startCam(v){
+  v.setAttribute('playsinline','');v.muted=true;v.autoplay=true;
+  const box=document.createElement('div');box.className='camtools';
+  box.innerHTML='<select id="camSel"></select><button type="button" class="btn sec" id="camRef">Refresh</button><div class="camstatus" id="camMsg"></div>';
+  v.parentNode.insertBefore(box,v);
+  const sel=box.querySelector('#camSel'),msg=box.querySelector('#camMsg');
+  function explain(e){const n=e.name||'';
+    if(!navigator.mediaDevices) return "Browser camera support nahi hai. Chrome/Edge mein http://127.0.0.1:5000 se kholo.";
+    if(n==='NotAllowedError'||n==='SecurityError') return "Camera permission block hai.\nAddress bar ke camera icon pe Allow karo, phir refresh karo.";
+    if(n==='NotFoundError'||n==='OverconstrainedError') return "Koi camera nahi mila. USB camera lagao, phir Refresh dabao.";
+    if(n==='NotReadableError'||n==='AbortError') return "Camera kisi aur app mein chal raha hai (Zoom/Teams/Camera app). Use band karo, phir Refresh dabao.";
+    return "Camera error: "+n+" "+(e.message||'');}
+  async function listCams(cur){
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    sel.innerHTML='';devs.forEach((d,i)=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('Camera '+(i+1));sel.appendChild(o)});
+    if(cur&&devs.some(d=>d.deviceId===cur))sel.value=cur;return devs.length}
+  async function open(id){
+    msg.textContent='';if(_stream){_stream.getTracks().forEach(t=>t.stop());_stream=null}
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg.textContent=explain({});return}
+    try{
+      try{_stream=await navigator.mediaDevices.getUserMedia({video:id?{deviceId:{exact:id}}:true,audio:false})}
+      catch(e1){if(id&&(e1.name==='OverconstrainedError'||e1.name==='NotFoundError'))_stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});else throw e1}
+      v.srcObject=_stream;await v.play();
+      await listCams(_stream.getVideoTracks()[0].getSettings().deviceId);
+      setTimeout(()=>{if(v.videoWidth===0)msg.textContent="Video nahi aa rahi. Dropdown se dusra camera chuno ya dusri app band karo."},2000);
+    }catch(e){msg.textContent=explain(e);try{await listCams()}catch(_){}}}
+  sel.onchange=()=>open(sel.value);box.querySelector('#camRef').onclick=()=>open(sel.value||undefined);
+  if(navigator.mediaDevices)navigator.mediaDevices.addEventListener('devicechange',async()=>{try{await listCams(sel.value)}catch(_){}if(!_stream||!_stream.active)open(sel.value||undefined)});
+  await open();}
+function snap(v,silent){
+  if(!v.videoWidth){if(!silent)toast('Camera abhi ready nahi hai.','err');return null}
+  const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);return c.toDataURL('image/jpeg',0.9)}
+</script></head><body>
+<div class="top"><span class="brand">📷 Smart Attendance</span>
+{% set p=request.path %}{% if session.get('auth') %}
+<a href="/" class="{{'on' if p=='/'}}">Home</a>
+<a href="/register" class="{{'on' if p=='/register'}}">Register</a>
+<a href="/attendance" class="{{'on' if p=='/attendance'}}">Attendance</a>
+<a href="/report" class="{{'on' if p.startswith('/report')}}">Report</a>
+<a href="/logout">Logout</a>{% endif %}<a href="#" onclick="toggleTheme();return false" title="Dark/Light">🌓</a></div>
+<div class="wrap">{% block body %}{% endblock %}</div>
+<div id="toasts"></div>
+</body></html>

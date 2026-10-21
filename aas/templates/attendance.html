@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block body %}
+<h1>Attendance Lagao</h1><p class="sub">Camera ke saamne aao. Ek saath kai chehre bhi pehchane jate hain</p>
+<div class="grid g2">
+ <div class="card"><div style="position:relative"><video id="v" autoplay playsinline></video>
+  <div id="beam" style="display:none;position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#22c55e,transparent);box-shadow:0 0 14px #22c55e;top:0;animation:sc 1.6s linear infinite"></div></div>
+  <style>@keyframes sc{0%{top:0}100%{top:calc(100% - 3px)}}</style>
+  <div id="status" style="margin:10px 0;font-weight:700;color:var(--muted)">Ready</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+   <button class="btn" type="button" id="one">🔍 Ek baar scan</button>
+   <button class="btn sec" type="button" id="auto">▶ Auto scan (3 sec)</button></div></div>
+ <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Aaj lagi attendance</h3><span class="badge p" id="cnt">0</span></div>
+  <div id="log" style="margin-top:12px;display:grid;gap:8px"></div>
+  <div id="empty" class="sub">Abhi koi nahi.</div></div>
+</div>
+<script>
+const v=document.getElementById('v'),st=document.getElementById('status'),log=document.getElementById('log'),beam=document.getElementById('beam');
+let timer=null,busy=false,total=0;startCam(v);
+function add(m){document.getElementById('empty').style.display='none';total++;document.getElementById('cnt').textContent=total;
+ var d=document.createElement('div');d.style.cssText='display:flex;justify-content:space-between;padding:10px 12px;background:var(--okbg);border-radius:10px;animation:pop .3s';
+ d.innerHTML='<b></b><span style="color:var(--muted);font-size:13px"></span>';d.firstChild.textContent='✅ '+m.name+' ('+m.roll+')';d.lastChild.textContent=m.time;log.prepend(d)}
+async function scan(silent){
+ if(busy)return;var im=snap(v,silent);if(!im)return;busy=true;beam.style.display='block';st.textContent='Scan ho raha hai...';
+ try{var r=await fetch('/api/mark',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:im})});var j=await r.json();
+  if(!j.ok){st.textContent=j.msg;toast(j.msg,'err')}
+  else if(!j.faces){st.textContent='Koi chehra nahi dikha. Thoda paas aao.'}
+  else{j.marked.forEach(function(m){add(m);toast(m.name+' Present ✅','ok')});
+   var parts=[];if(j.marked.length)parts.push(j.marked.length+' nayi attendance');if(j.already.length)parts.push(j.already.join(', ')+' pehle se lagi hai');if(j.unknown)parts.push(j.unknown+' chehra pehchana nahi gaya');
+   st.textContent=parts.join(' • ')}
+ }catch(e){st.textContent='Error: '+e.message}
+ busy=false;if(!timer)beam.style.display='none'}
+document.getElementById('one').onclick=function(){scan(false)};
+document.getElementById('auto').onclick=function(){var b=document.getElementById('auto');
+ if(timer){clearInterval(timer);timer=null;b.textContent='▶ Auto scan (3 sec)';beam.style.display='none';st.textContent='Auto scan band'}
+ else{timer=setInterval(function(){scan(true)},3000);b.textContent='⏸ Auto scan band karo';scan(true)}};
+</script>{% endblock %}
